@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # 1. DISPATCHER (API GATEWAY)
+  # ==========================================
+  dispatcher-service:
+    build: 
+      context: ./dispatcher-service
+      dockerfile: Dockerfile
+    container_name: dispatcher_gateway
+    ports:
+      - "8080:8080" # PROJEDEKİ TEK DIŞARIYA AÇIK YER (KIRMIZI ÇİZGİ)
+    networks:
+      - gateway_net           # Alt servislere (Auth, User, Product) erişim için iç ağ
+      - dispatcher_db_net     # Sadece kendisine ait Redis veritabanı ağı
+    depends_on:
+      - dispatcher-redis
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - REDIS_HOST=dispatcher-redis
+      - REDIS_PORT=6379
+
+  dispatcher-redis:
+    image: redis:7-alpine
+    container_name: dispatcher_redis
+    networks:
+      - dispatcher_db_net    # Sadece Dispatcher bu veritabanına erişebilir
+    # PORT AÇILMAZ! Dışarıdan veya gateway_net'ten bu DB'ye erişim yasaktır.
+
+  # ==========================================
+  # 2. AUTH SERVICE (OTURUM AÇMA)
+  # ==========================================
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth_service
+    networks:
+      - gateway_net          # Dispatcher'dan yönlendirilen istekleri almak için
+      - auth_db_net          # Sadece kendisine ait Mongo veritabanı ağı
+    depends_on:
+      - auth-mongo
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_MONGODB_URI=mongodb://auth-mongo:27017/authdb
+    # PORT AÇILMAZ! Sadece iç ağdan HTTP ulaştırılabilir.
+
+  auth-mongo:
+    image: mongo:6-jammy
+    container_name: auth_mongo
+    networks:
+      - auth_db_net          # Sadece Auth Service bağlanabilir
+    volumes:
+      - auth_db_data:/data/db
+
+  # ==========================================
+  # 3. USER SERVICE
+  # ==========================================
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user_service
+    networks:
+      - gateway_net
+      - user_db_net
+    depends_on:
+      - user-mongo
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_MONGODB_URI=mongodb://user-mongo:27017/userdb
+
+  user-mongo:
+    image: mongo:6-jammy
+    container_name: user_mongo
+    networks:
+      - user_db_net         # Sadece User Service bağlanabilir
+    volumes:
+      - user_db_data:/data/db
+
+  # ==========================================
+  # 4. PRODUCT SERVICE
+  # ==========================================
+  product-service:
+    build:
+      context: ./product-service
+      dockerfile: Dockerfile
+    container_name: product_service
+    networks:
+      - gateway_net
+      - product_db_net
+    depends_on:
+      - product-mongo
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_MONGODB_URI=mongodb://product-mongo:27017/productdb
+
+  product-mongo:
+    image: mongo:6-jammy
+    container_name: product_mongo
+    networks:
+      - product_db_net      # Sadece Product Service bağlanabilir
+    volumes:
+      - product_db_data:/data/db
+
+# ==========================================
+# GÜVENLİK VE NETWORK İZOLASYON KURALLARI
+# ==========================================
+networks:
+  gateway_net:
+    driver: bridge # Dispatcher ve diğer Mikroservislerin haberleşme ağı (DB'ler hariç)
+  dispatcher_db_net:
+    driver: bridge # SADECE Dispatcher Service <-> Dispatcher Redis
+  auth_db_net:
+    driver: bridge # SADECE Auth Service <-> Auth Mongo
+  user_db_net:
+    driver: bridge # SADECE User Service <-> User Mongo
+  product_db_net:
+    driver: bridge # SADECE Product Service <-> Product Mongo
+
+# ==========================================
+# VERİ KALICILIĞI (DOCKER RESTARTLARINDA VERİ KAYBINA KARŞI)
+# ==========================================
+volumes:
+  auth_db_data:
+  user_db_data:
+  product_db_data:
