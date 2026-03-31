@@ -39,10 +39,6 @@ class DispatcherControllerTest {
                 eq(String.class)
         )).thenReturn(ResponseEntity.ok(mockInternalResponse));
 
-        // Act & Assert
-        // DispatcherController'ın içi tamamen BOŞ olduğu için framework /api/users/1 adresini bulamayacaktır.
-        // Bu nedenle sonuç 404 dönecektir (AssertionError: Expected 200, Actual 404) ve Test Fail olacaktır.
-        // Bu durum bir Derleme Hatasından çok daha profesyonel ve geçerli bir TDD kanıtıdır.
         mockMvc.perform(get("/api/users/1"))
                 .andExpect(status().isOk())
                 .andExpect(content().json(mockInternalResponse));
