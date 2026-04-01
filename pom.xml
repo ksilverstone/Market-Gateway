@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>yazlab</groupId>
+    <artifactId>market-gateway-root</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    
+    <!-- IntelliJ IDEA'nın tüm projeyi tek seferde tanıması için modüller -->
+    <modules>
+        <module>dispatcher-service</module>
+        <module>auth-service</module>
+        <module>user-service</module>
+        <module>product-service</module>
+    </modules>
+</project>
