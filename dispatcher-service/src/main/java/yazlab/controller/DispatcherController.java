@@ -20,18 +20,14 @@ public class DispatcherController {
 
     private final RestTemplate restTemplate;
     
-    // Ağ İzolasyonu Kuralı Kapsamında Hedef Servis (Internal Network Adresi)
+    // Ağ İzolasyonu Kuralı Kapsamında Hedef Servis
     private static final String USER_SERVICE_BASE_URL = "http://user-service:8080/api/users";
 
-    // Bağımlılık Enjeksiyonu (OOP Kuralı)
+    // Bağımlılık Enjeksiyonu
     public DispatcherController(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
 
-    /**
-     * Gelen tüm GET, POST, PUT, DELETE /api/users/** HTTP anlık isteklerini yakalar 
-     * ve doğrudan arka plandaki (internal) servise proxy yönlendirmesi yapar.
-     */
     @RequestMapping(value = "/**")
     public ResponseEntity<String> routeUserRequests(HttpServletRequest request, 
                                                     @RequestBody(required = false) String body) {
@@ -52,14 +48,12 @@ public class DispatcherController {
             return restTemplate.exchange(targetUri, method, httpEntity, String.class);
             
         } catch (HttpStatusCodeException e) {
-            // KIRMIZI ÇİZGİ: Eğer hedef servis 4xx veya 5xx dönerse 200 OK ile maskeleme YAPILMAZ!
             // Gelen orijinal hata durum kodunu, yanıt başlıklarını ve hata gövdesini olduğu gibi dışarı aktarılır.
             return ResponseEntity.status(e.getStatusCode())
                     .headers(e.getResponseHeaders())
                     .body(e.getResponseBodyAsString());
             
         } catch (RestClientException e) {
-            // Hedef servis izole ağdan düştüyse / veya tamamen Exception aldıysa: (Circuit Breaking konseptinin çok primitif hali)
             // Bağlantı reddedildi => 503 Service Unavailable döner.
             return ResponseEntity.status(503).body("{\"error\": \"User Service is currently unavailable or unreachable on the internal network.\"}");
         }
