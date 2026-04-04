@@ -15,22 +15,18 @@ import org.springframework.web.client.RestTemplate;
 import java.util.Enumeration;
 
 @RestController
-@RequestMapping("/api/users")
 public class DispatcherController {
 
     private final RestTemplate restTemplate;
-    
-    // Ağ İzolasyonu Kuralı Kapsamında Hedef Servis
-    private static final String USER_SERVICE_BASE_URL = "http://user-service:8080/api/users";
 
     // Bağımlılık Enjeksiyonu
     public DispatcherController(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
 
-    @RequestMapping(value = "/**")
-    public ResponseEntity<String> routeUserRequests(HttpServletRequest request, 
-                                                    @RequestBody(required = false) String body) {
+    @RequestMapping(value = {"/api/users/**", "/api/users", "/api/products/**", "/api/products", "/api/auth/**", "/api/auth"})
+    public ResponseEntity<String> routeRequests(HttpServletRequest request, 
+                                                @RequestBody(required = false) String body) {
         try {
             // 1. Dinamik URI inşası
             String targetUri = buildTargetUri(request);
@@ -44,7 +40,7 @@ public class DispatcherController {
             // 4. İsteği zırhlandırma ve entegre etme
             HttpEntity<String> httpEntity = new HttpEntity<>(body, headers);
 
-            // 5. İstek User Service'e fırlatılır ve döner dönmez client'a paslanır (GREEN PHASE başarı noktası)
+            // 5. İstek ilgili Mikroservise fırlatılır ve döner dönmez client'a paslanır
             return restTemplate.exchange(targetUri, method, httpEntity, String.class);
             
         } catch (HttpStatusCodeException e) {
@@ -53,9 +49,11 @@ public class DispatcherController {
                     .headers(e.getResponseHeaders())
                     .body(e.getResponseBodyAsString());
             
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body("{\"error\": \"Route not found.\"}");
         } catch (RestClientException e) {
             // Bağlantı reddedildi => 503 Service Unavailable döner.
-            return ResponseEntity.status(503).body("{\"error\": \"User Service is currently unavailable or unreachable on the internal network.\"}");
+            return ResponseEntity.status(503).body("{\"error\": \"Target Service is currently unavailable or unreachable on the internal network.\"}");
         }
     }
 
@@ -65,10 +63,23 @@ public class DispatcherController {
         String requestUri = request.getRequestURI(); 
         String queryString = request.getQueryString(); 
         
-        // Gelen orijinal URL'den '/api/users' prefix'ini temizleyip kalan suffix yolunu belirliyoruz. (Örn: /1)
-        String pathSuffix = requestUri.replaceFirst("^/api/users", "");
+        String targetBaseUrl;
+        String pathSuffix;
         
-        StringBuilder targetUrl = new StringBuilder(USER_SERVICE_BASE_URL).append(pathSuffix);
+        if (requestUri.startsWith("/api/users")) {
+            targetBaseUrl = "http://user-service:8082/api/users";
+            pathSuffix = requestUri.replaceFirst("^/api/users", "");
+        } else if (requestUri.startsWith("/api/products")) {
+            targetBaseUrl = "http://product-service:8083/api/products";
+            pathSuffix = requestUri.replaceFirst("^/api/products", "");
+        } else if (requestUri.startsWith("/api/auth")) {
+            targetBaseUrl = "http://auth-service:8081/api/auth";
+            pathSuffix = requestUri.replaceFirst("^/api/auth", "");
+        } else {
+            throw new IllegalArgumentException("Unknown route: " + requestUri);
+        }
+        
+        StringBuilder targetUrl = new StringBuilder(targetBaseUrl).append(pathSuffix);
         
         if (queryString != null) {
             targetUrl.append("?").append(queryString);
