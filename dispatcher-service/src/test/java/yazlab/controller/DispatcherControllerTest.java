@@ -33,7 +33,7 @@ class DispatcherControllerTest {
         String mockInternalResponse = "{\"id\":1, \"name\":\"Yazlab Kullanici\"}";
         
         Mockito.when(restTemplate.exchange(
-                eq("http://user-service:8080/api/users/1"),
+                eq("http://user-service:8082/api/users/1"),
                 eq(HttpMethod.GET),
                 any(),
                 eq(String.class)
