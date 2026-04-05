@@ -1,0 +1,31 @@
+{
+  "title": "Dispatcher API Gateway Monitoring",
+  "timezone": "browser",
+  "refresh": "5s",
+  "schemaVersion": 36,
+  "panels": [
+    {
+      "title": "Toplam HTTP İstek Oranı Rota Bazlı",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {
+          "expr": "rate(http_server_requests_seconds_count{application=\"dispatcher-service\"}[1m])",
+          "legendFormat": "{{uri}} - HTTP {{status}}"
+        }
+      ],
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 }
+    },
+    {
+      "title": "Ortalama Yanıt Süresi (Saniye)",
+      "type": "gauge",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_sum{application=\"dispatcher-service\"}[1m])) / sum(rate(http_server_requests_seconds_count{application=\"dispatcher-service\"}[1m]))"
+        }
+      ],
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 }
+    }
+  ]
+}

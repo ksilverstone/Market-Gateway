@@ -1,5 +1,9 @@
 package yazlab.controller;
 
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -11,6 +15,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.client.RestTemplate;
 
+import java.security.Key;
+import java.util.Date;
+
+import yazlab.interceptor.JwtAuthAndLoggingInterceptor;
+import yazlab.config.WebConfig;
+import org.springframework.context.annotation.Import;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -18,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(DispatcherController.class)
+@Import({WebConfig.class, JwtAuthAndLoggingInterceptor.class})
 class DispatcherControllerTest {
 
     @Autowired
@@ -39,7 +51,15 @@ class DispatcherControllerTest {
                 eq(String.class)
         )).thenReturn(ResponseEntity.ok(mockInternalResponse));
 
-        mockMvc.perform(get("/api/users/1"))
+        // JWT Token Üretimi (Geçerli)
+        Key key = Keys.hmacShaKeyFor(JwtAuthAndLoggingInterceptor.SECRET_KEY.getBytes());
+        String validToken = Jwts.builder()
+                .setSubject("testuser")
+                .setExpiration(new Date(System.currentTimeMillis() + 3600000))
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+
+        mockMvc.perform(get("/api/users/1").header("Authorization", "Bearer " + validToken))
                 .andExpect(status().isOk())
                 .andExpect(content().json(mockInternalResponse));
     }

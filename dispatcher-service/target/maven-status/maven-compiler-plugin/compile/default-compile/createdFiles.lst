@@ -1,0 +1,4 @@
+yazlab/controller/DispatcherController.class
+yazlab/DispatcherApplication.class
+yazlab/config/WebConfig.class
+yazlab/interceptor/JwtAuthAndLoggingInterceptor.class
